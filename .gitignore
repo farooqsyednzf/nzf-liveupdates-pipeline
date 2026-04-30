@@ -1,0 +1,37 @@
+# Secrets and local config
+.env
+.env.local
+*.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Local artifacts (NEVER commit raw exports or case data)
+*.csv
+*.xlsx
+local_runs/
+debug/
+scratch/
+
+# Allow committed run summary
+!data/last-run.json
