@@ -2,7 +2,9 @@
 Zoho Analytics export.
 
 Pulls the website updates view in date-windowed chunks to avoid timeouts.
-Returns a list of dict rows from the underlying CSV.
+Uses the Bulk API for SQL-based async export.
+
+Endpoint reference: https://www.zoho.com/analytics/api/v2/bulk-api/export-data-async/
 
 Environment variables required:
     ZOHO_ANALYTICS_REFRESH_TOKEN
@@ -82,21 +84,28 @@ def _date_windows(lookback_days: int, window_days: int):
         cursor = window_end + timedelta(days=1)
 
 
-def _create_export_job(access_token: str, sql: str) -> str:
-    url = (
-        f"{ZOHO_ANALYTICS_BASE_URL}/workspaces/{ZOHO_WORKSPACE_ID}/data"
-    )
-    headers = {
+def _zoho_headers(access_token: str) -> dict:
+    return {
         "Authorization": f"Zoho-oauthtoken {access_token}",
         "ZANALYTICS-ORGID": ZOHO_ORG_ID,
     }
+
+
+def _create_export_job(access_token: str, sql: str) -> str:
+    """Create an async bulk export job using SQL. Returns jobId."""
+    url = f"{ZOHO_ANALYTICS_BASE_URL}/bulk/workspaces/{ZOHO_WORKSPACE_ID}/data"
     config = {
         "sqlQuery": sql,
         "responseFormat": "csv",
     }
-    data = {"CONFIG": json.dumps(config)}
-    resp = requests.post(url, headers=headers, data=data, timeout=60)
-    resp.raise_for_status()
+    params = {"CONFIG": json.dumps(config)}
+    resp = requests.get(
+        url, headers=_zoho_headers(access_token), params=params, timeout=60
+    )
+    if not resp.ok:
+        raise ZohoExportError(
+            f"Create export failed: {resp.status_code} {resp.text[:300]}"
+        )
     payload = resp.json()
     job_id = payload.get("data", {}).get("jobId")
     if not job_id:
@@ -105,15 +114,18 @@ def _create_export_job(access_token: str, sql: str) -> str:
 
 
 def _poll_job(access_token: str, job_id: str) -> dict:
-    url = f"{ZOHO_ANALYTICS_BASE_URL}/bulk/{job_id}"
-    headers = {
-        "Authorization": f"Zoho-oauthtoken {access_token}",
-        "ZANALYTICS-ORGID": ZOHO_ORG_ID,
-    }
+    """Poll a bulk export job until completion."""
+    url = (
+        f"{ZOHO_ANALYTICS_BASE_URL}/bulk/workspaces/{ZOHO_WORKSPACE_ID}"
+        f"/exportjobs/{job_id}"
+    )
     deadline = time.time() + POLL_TIMEOUT_SECONDS
     while time.time() < deadline:
-        resp = requests.get(url, headers=headers, timeout=30)
-        resp.raise_for_status()
+        resp = requests.get(url, headers=_zoho_headers(access_token), timeout=30)
+        if not resp.ok:
+            raise ZohoExportError(
+                f"Poll failed: {resp.status_code} {resp.text[:300]}"
+            )
         payload = resp.json().get("data", {})
         status = payload.get("jobStatus", "")
         if status == "JOB COMPLETED":
@@ -125,22 +137,29 @@ def _poll_job(access_token: str, job_id: str) -> dict:
 
 
 def _download_csv(access_token: str, job_id: str) -> str:
-    url = f"{ZOHO_ANALYTICS_BASE_URL}/download/{job_id}"
-    headers = {
-        "Authorization": f"Zoho-oauthtoken {access_token}",
-        "ZANALYTICS-ORGID": ZOHO_ORG_ID,
-    }
+    """Download completed bulk export job as CSV text."""
+    url = (
+        f"{ZOHO_ANALYTICS_BASE_URL}/bulk/workspaces/{ZOHO_WORKSPACE_ID}"
+        f"/exportjobs/{job_id}/data"
+    )
     last_error: Exception | None = None
     for attempt in range(1, DOWNLOAD_RETRY_LIMIT + 1):
         try:
-            resp = requests.get(url, headers=headers, timeout=120)
-            resp.raise_for_status()
+            resp = requests.get(
+                url, headers=_zoho_headers(access_token), timeout=120
+            )
+            if not resp.ok:
+                raise ZohoExportError(
+                    f"Download failed: {resp.status_code} {resp.text[:300]}"
+                )
             return resp.content.decode("utf-8-sig")
-        except requests.RequestException as exc:
+        except (requests.RequestException, ZohoExportError) as exc:
             last_error = exc
             log.warning("Download attempt %d failed: %s", attempt, exc)
             time.sleep(2 * attempt)
-    raise ZohoExportError(f"Download failed after {DOWNLOAD_RETRY_LIMIT} attempts: {last_error}")
+    raise ZohoExportError(
+        f"Download failed after {DOWNLOAD_RETRY_LIMIT} attempts: {last_error}"
+    )
 
 
 def _csv_to_rows(csv_text: str) -> list[dict]:
@@ -152,15 +171,15 @@ def export_window(access_token: str, start: datetime, end: datetime) -> list[dic
     """Export a single date window."""
     sql = (
         f'SELECT * FROM "{ZOHO_VIEW_NAME}" '
-        f"WHERE case_Created_dt >= '{_format_zoho_date(start)}' "
-        f"AND case_Created_dt <= '{_format_zoho_date(end)}'"
+        f"WHERE \"case_Created_dt\" >= '{_format_zoho_date(start)}' "
+        f"AND \"case_Created_dt\" <= '{_format_zoho_date(end)}'"
     )
-    log.info("Exporting window %s to %s", start, end)
+    log.info("Exporting window %s to %s", start.date(), end.date())
     job_id = _create_export_job(access_token, sql)
     _poll_job(access_token, job_id)
     csv_text = _download_csv(access_token, job_id)
     rows = _csv_to_rows(csv_text)
-    log.info("Window %s to %s returned %d rows", start, end, len(rows))
+    log.info("Window %s to %s returned %d rows", start.date(), end.date(), len(rows))
     return rows
 
 
