@@ -2,9 +2,6 @@ name: Publish website updates
 
 on:
   schedule:
-    # 21:30 UTC = 7:30 AM AEST (UTC+10).
-    # Note: during AEDT (early Oct to early Apr) Melbourne local time will be 8:30 AM.
-    # This is intentional. Cron is locked to literal AEST.
     - cron: '30 21 * * *'
   workflow_dispatch:
 
