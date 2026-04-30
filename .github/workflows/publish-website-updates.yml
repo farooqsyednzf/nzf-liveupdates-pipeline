@@ -1,1 +1,59 @@
+name: Publish website updates
 
+on:
+  schedule:
+    # 21:30 UTC = 7:30 AM AEST (UTC+10).
+    # Note: during AEDT (early Oct to early Apr) Melbourne local time will be 8:30 AM.
+    # This is intentional. Cron is locked to literal AEST.
+    - cron: '30 21 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: scripts/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r scripts/requirements.txt
+
+      - name: Run pipeline
+        env:
+          ZOHO_ANALYTICS_REFRESH_TOKEN: ${{ secrets.ZOHO_ANALYTICS_REFRESH_TOKEN }}
+          ZOHO_ANALYTICS_CLIENT_ID: ${{ secrets.ZOHO_ANALYTICS_CLIENT_ID }}
+          ZOHO_ANALYTICS_CLIENT_SECRET: ${{ secrets.ZOHO_ANALYTICS_CLIENT_SECRET }}
+          CODA_API_TOKEN: ${{ secrets.CODA_API_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python scripts/refresh.py
+
+      - name: Append run summary to GitHub Actions UI
+        if: always()
+        run: |
+          if [ -f data/last-run.json ]; then
+            echo "## Pipeline run summary" >> $GITHUB_STEP_SUMMARY
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+            cat data/last-run.json >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Commit run summary
+        if: always()
+        run: |
+          git config user.name "nzf-bot"
+          git config user.email "bot@nzf.org.au"
+          git add data/last-run.json || true
+          git diff --staged --quiet || git commit -m "Run summary: $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push || true
