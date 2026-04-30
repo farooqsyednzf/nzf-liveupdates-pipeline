@@ -1,0 +1,30 @@
+name: Diagnose Zoho schema
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: scripts/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r scripts/requirements.txt
+
+      - name: Run schema diagnostic
+        env:
+          ZOHO_ANALYTICS_REFRESH_TOKEN: ${{ secrets.ZOHO_ANALYTICS_REFRESH_TOKEN }}
+          ZOHO_ANALYTICS_CLIENT_ID: ${{ secrets.ZOHO_ANALYTICS_CLIENT_ID }}
+          ZOHO_ANALYTICS_CLIENT_SECRET: ${{ secrets.ZOHO_ANALYTICS_CLIENT_SECRET }}
+        run: python scripts/diagnose_schema.py
