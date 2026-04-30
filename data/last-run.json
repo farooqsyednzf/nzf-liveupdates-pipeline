@@ -1,4 +1,8 @@
 {
-  "status": "no runs yet",
-  "note": "This file will be overwritten on the first successful or failed pipeline run."
+  "started_at_utc": "2026-04-30T06:04:26+00:00",
+  "status": "failure",
+  "elapsed_seconds": 0.7,
+  "error_type": "HTTPError",
+  "error_message": "400 Client Error:  for url: https://analyticsapi.zoho.com/restapi/v2/workspaces/1715382000001002475/data",
+  "finished_at_utc": "2026-04-30T06:04:26+00:00"
 }
