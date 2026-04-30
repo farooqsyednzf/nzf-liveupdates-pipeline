@@ -242,7 +242,7 @@ def should_exclude_distribution(row: dict) -> tuple[bool, str]:
     if product_category in EXCLUDED_PRODUCT_CATEGORIES:
         return True, f"excluded product category: {product_category}"
 
-    description = (row.get("distribution_description") or "").lower()
+    description = (row.get("description") or "").lower()
     for token in EXCLUDED_DESCRIPTION_TOKENS:
         if token in description:
             return True, f"description matches excluded token: {token}"
@@ -262,7 +262,7 @@ def should_exclude_application(case_rows: list[dict]) -> tuple[bool, str]:
     """Return (excluded, reason). Inspect all rows for the case."""
     if not case_rows:
         return True, "no rows"
-    stages = {(r.get("case_stage") or "").strip() for r in case_rows}
+    stages = {(r.get("stage") or "").strip() for r in case_rows}
     excluded_stages = stages & EXCLUDED_APPLICATION_STAGES
     if excluded_stages:
         return True, f"excluded stage: {sorted(excluded_stages)[0]}"
@@ -320,11 +320,11 @@ def build_case_context(case_rows: list[dict]) -> str:
     parts: list[str] = []
     seen_text: set[str] = set()
     for row in case_rows:
-        description = (row.get("case_description") or "").strip()
+        description = (row.get("description") or "").strip()
         if description and description not in seen_text:
             parts.append(f"DESCRIPTION: {description}")
             seen_text.add(description)
-        note = (row.get("note_content") or "").strip()
+        note = (row.get("notes") or "").strip()
         if note and note not in seen_text:
             parts.append(f"NOTE: {note}")
             seen_text.add(note)
