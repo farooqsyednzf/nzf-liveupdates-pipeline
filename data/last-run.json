@@ -1,8 +1,10 @@
 {
-  "started_at_utc": "2026-04-30T06:07:30+00:00",
-  "status": "failure",
-  "elapsed_seconds": 25.7,
-  "error_type": "RuntimeError",
-  "error_message": "Application yield below minimum: 0 < 10",
-  "finished_at_utc": "2026-04-30T06:07:56+00:00"
+  "started_at_utc": "2026-04-30T06:14:52+00:00",
+  "status": "success",
+  "elapsed_seconds": 198.1,
+  "raw_rows_pulled": 97,
+  "distribution_messages": 8,
+  "application_messages": 34,
+  "rows_in_coda_after_publish": 25,
+  "finished_at_utc": "2026-04-30T06:18:10+00:00"
 }
