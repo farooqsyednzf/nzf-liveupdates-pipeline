@@ -1,10 +1,10 @@
 {
-  "started_at_utc": "2026-05-01T00:11:41+00:00",
+  "started_at_utc": "2026-05-02T00:09:34+00:00",
   "status": "success",
-  "elapsed_seconds": 420.8,
-  "raw_rows_pulled": 118,
-  "distribution_messages": 8,
-  "application_messages": 40,
-  "rows_in_coda_after_publish": 25,
-  "finished_at_utc": "2026-05-01T00:18:42+00:00"
+  "elapsed_seconds": 224.1,
+  "raw_rows_pulled": 109,
+  "distribution_messages": 6,
+  "application_messages": 43,
+  "rows_in_coda_after_publish": 40,
+  "finished_at_utc": "2026-05-02T00:13:18+00:00"
 }
